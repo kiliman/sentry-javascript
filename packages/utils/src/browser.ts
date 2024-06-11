@@ -124,13 +124,13 @@ function _htmlElementAsString(el: unknown, keyAttrs?: string[]): string {
     }
   }
   const allowedAttrs = ['aria-label', 'type', 'name', 'title', 'alt'];
-  for (i = 0; i < allowedAttrs.length; i++) {
-    key = allowedAttrs[i];
-    attr = elem.getAttribute(key);
+  for (const k of allowedAttrs) {
+    attr = elem.getAttribute(k);
     if (attr) {
       out.push(`[${key}="${attr}"]`);
     }
   }
+
   return out.join('');
 }
 

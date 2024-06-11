@@ -116,9 +116,9 @@ export function node(getModule?: GetModuleFn): StackLineParserFn {
         filename,
         module: getModule ? getModule(filename) : undefined,
         function: functionName,
-        lineno: parseInt(lineMatch[3], 10) || undefined,
-        colno: parseInt(lineMatch[4], 10) || undefined,
-        in_app: filenameIsInApp(filename, isNative),
+        lineno: _parseInt(lineMatch[3]),
+        colno: _parseInt(lineMatch[4]),
+        in_app: filenameIsInApp(filename || '', isNative),
       };
     }
 
@@ -140,4 +140,8 @@ export function node(getModule?: GetModuleFn): StackLineParserFn {
  */
 export function nodeStackLineParser(getModule?: GetModuleFn): StackLineParser {
   return [90, node(getModule)];
+}
+
+function _parseInt(input: string | undefined): number {
+  return parseInt(input || '', 10);
 }

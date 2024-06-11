@@ -69,17 +69,17 @@ const chromeStackParserFn: StackLineParserFn = line => {
   const noFnParts = chromeRegexNoFnName.exec(line);
 
   if (noFnParts) {
-    const [, filename, line, col] = noFnParts;
+    const [, filename = '', line = '', col = ''] = noFnParts;
     return createFrame(filename, UNKNOWN_FUNCTION, +line, +col);
   }
 
   const parts = chromeRegex.exec(line);
-
-  if (parts) {
-    const isEval = parts[2] && parts[2].indexOf('eval') === 0; // start of line
+  const parts2 = parts && parts[2];
+  if (parts && parts2) {
+    const isEval = parts2.indexOf('eval') === 0; // start of line
 
     if (isEval) {
-      const subMatch = chromeEvalRegex.exec(parts[2]);
+      const subMatch = chromeEvalRegex.exec(parts2) as null | [string, string, string, string];
 
       if (subMatch) {
         // throw out eval line/column and use top-most line/column number
@@ -91,7 +91,7 @@ const chromeStackParserFn: StackLineParserFn = line => {
 
     // Kamil: One more hack won't hurt us right? Understanding and adding more rules on top of these regexps right now
     // would be way too time consuming. (TODO: Rewrite whole RegExp to be more readable)
-    const [func, filename] = extractSafariExtensionDetails(parts[1] || UNKNOWN_FUNCTION, parts[2]);
+    const [func, filename] = extractSafariExtensionDetails(parts[1] || UNKNOWN_FUNCTION, parts2);
 
     return createFrame(filename, func, parts[3] ? +parts[3] : undefined, parts[4] ? +parts[4] : undefined);
   }
@@ -111,10 +111,12 @@ const geckoEvalRegex = /(\S+) line (\d+)(?: > eval line \d+)* > eval/i;
 const gecko: StackLineParserFn = line => {
   const parts = geckoREgex.exec(line);
 
-  if (parts) {
-    const isEval = parts[3] && parts[3].indexOf(' > eval') > -1;
+  let filename = parts && parts[3];
+
+  if (parts && filename) {
+    const isEval = filename.indexOf(' > eval') > -1;
     if (isEval) {
-      const subMatch = geckoEvalRegex.exec(parts[3]);
+      const subMatch = geckoEvalRegex.exec(filename) as null | [string, string, string, string, string, string];
 
       if (subMatch) {
         // throw out eval line/column and use top-most line number
@@ -125,7 +127,6 @@ const gecko: StackLineParserFn = line => {
       }
     }
 
-    let filename = parts[3];
     let func = parts[1] || UNKNOWN_FUNCTION;
     [func, filename] = extractSafariExtensionDetails(func, filename);
 
@@ -140,7 +141,7 @@ export const geckoStackLineParser: StackLineParser = [GECKO_PRIORITY, gecko];
 const winjsRegex = /^\s*at (?:((?:\[object object\])?.+) )?\(?((?:[-a-z]+):.*?):(\d+)(?::(\d+))?\)?\s*$/i;
 
 const winjs: StackLineParserFn = line => {
-  const parts = winjsRegex.exec(line);
+  const parts = winjsRegex.exec(line) as null | [string, string, string, string, string];
 
   return parts
     ? createFrame(parts[2], parts[1] || UNKNOWN_FUNCTION, +parts[3], parts[4] ? +parts[4] : undefined)
@@ -152,7 +153,7 @@ export const winjsStackLineParser: StackLineParser = [WINJS_PRIORITY, winjs];
 const opera10Regex = / line (\d+).*script (?:in )?(\S+)(?:: in function (\S+))?$/i;
 
 const opera10: StackLineParserFn = line => {
-  const parts = opera10Regex.exec(line);
+  const parts = opera10Regex.exec(line) as null | [string, string, string, string];
   return parts ? createFrame(parts[2], parts[3] || UNKNOWN_FUNCTION, +parts[1]) : undefined;
 };
 
@@ -162,7 +163,7 @@ const opera11Regex =
   / line (\d+), column (\d+)\s*(?:in (?:<anonymous function: ([^>]+)>|([^)]+))\(.*\))? in (.*):\s*$/i;
 
 const opera11: StackLineParserFn = line => {
-  const parts = opera11Regex.exec(line);
+  const parts = opera11Regex.exec(line) as null | [string, string, string, string, string, string];
   return parts ? createFrame(parts[5], parts[3] || parts[4] || UNKNOWN_FUNCTION, +parts[1], +parts[2]) : undefined;
 };
 
@@ -198,7 +199,7 @@ const extractSafariExtensionDetails = (func: string, filename: string): [string,
 
   return isSafariExtension || isSafariWebExtension
     ? [
-        func.indexOf('@') !== -1 ? func.split('@')[0] : UNKNOWN_FUNCTION,
+        func.indexOf('@') !== -1 ? (func.split('@')[0] as string) : UNKNOWN_FUNCTION,
         isSafariExtension ? `safari-extension:${filename}` : `safari-web-extension:${filename}`,
       ]
     : [func, filename];
